@@ -36,6 +36,64 @@ Before a Play Store release:
 
 > Not legal advice — verify the current terms of each service before publishing.
 
+## Building the release (signed, keyless, distributable)
+
+The app is signed with an **upload keystore** (`upload-keystore.jks` + `keystore.properties`,
+both gitignored — keep them safe and backed up; losing them means you can't update the app).
+
+Build distributable artifacts **without your personal API keys** baked in (the `-PpublicRelease`
+flag blanks them so the APK can be shared publicly; users add their own keys in Settings):
+
+```powershell
+# Installable APK (share / side-load):
+.\gradlew.bat -PpublicRelease assembleRelease
+#   -> app/build/outputs/apk/release/app-release.apk
+
+# Android App Bundle (Play Store):
+.\gradlew.bat -PpublicRelease bundleRelease
+#   -> app/build/outputs/bundle/release/app-release.aab
+```
+
+Omit `-PpublicRelease` to build with your keys baked in **for your own private use only**
+(never share that build — the keys are extractable from it).
+
+> The signed APK still needs the two `.tflite` models in `app/src/main/assets/` at build time;
+> they are bundled into the APK so end users don't need them.
+
+## Uploading to Google Play
+
+You need a **Google Play Console** developer account (one-time US$25). Steps:
+
+1. **Build the keyless AAB** — `./gradlew -PpublicRelease bundleRelease`.
+2. **Host the privacy policy** — put [PRIVACY.md](PRIVACY.md) at a public URL (e.g. a GitHub
+   Pages page or the raw file), and update `PRIVACY_URL` in `AboutScreen.kt` to match.
+3. **Create the app** in the Play Console → *Create app* (name "Bird Finder", free, app).
+4. **Play App Signing** — accept it (recommended). You upload with your **upload key**
+   (the keystore here); Google holds the real app-signing key. If you ever lose the upload
+   key, you can request an upload-key reset.
+5. **Create a release** — *Testing → Internal testing* first (fastest), then *Production*.
+   Upload `app-release.aab`. The `applicationId` `io.github.mistique707.birdfinder` becomes the
+   permanent package name — change it in `app/build.gradle.kts` *before* the first upload if you
+   want something else.
+6. **Store listing** — short + full description, app icon (provided), a **feature graphic**
+   (1024×500), and **2–8 phone screenshots**. (Take screenshots from the running app.)
+7. **App content** (left nav) — complete each:
+   - **Privacy policy** URL (step 2).
+   - **Data safety** — declare: audio processed on-device; *species name* + *coordinates*
+     sent to Wikipedia / Xeno-canto / OpenWeatherMap; no data sold; data not collected by you.
+   - **Permissions** — justify **microphone** (foreground bird-call ID, user-initiated) and
+     **location** (tagging + regional species filter). The `FOREGROUND_SERVICE_MICROPHONE`
+     use is prompted; explain it's the active listening session.
+   - **Ads** — declare **no ads**. **Content rating** questionnaire (Everyone).
+   - **Target audience** — not directed at children.
+8. **Review & roll out** — submit; first review typically takes a few days.
+
+**For every update:** bump `versionCode` (and usually `versionName`) in
+`app/build.gradle.kts`, rebuild the AAB, and upload a new release.
+
+> Reminder: BirdNET is **CC BY-NC-SA**, so the Play listing must stay **free with no ads /
+> IAP / paid tier**. To monetize, swap BirdNET for a commercial-friendly model first.
+
 ### Features
 
 - Live listening with a one-tap mic button, level pulse, and on-device BirdNET ID.

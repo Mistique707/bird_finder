@@ -11,4 +11,9 @@
 local.properties
 /app/build
 /app/release
+
+# Release signing — NEVER commit these
+keystore.properties
+*.jks
+*.keystore
 /app/src/main/assets/*.tflite

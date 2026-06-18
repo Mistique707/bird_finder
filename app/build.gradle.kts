@@ -11,15 +11,28 @@ val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val owmApiKey: String = localProps.getProperty("OWM_API_KEY", "")
-val xenoCantoApiKey: String = localProps.getProperty("XENOCANTO_API_KEY", "")
+// Pass -PpublicRelease to build distributable artifacts WITHOUT your personal API keys
+// baked in (they'd otherwise be extractable from the APK). Users add their own keys in
+// Settings. Normal builds keep the keys for your own convenience.
+val publicRelease: Boolean = project.hasProperty("publicRelease")
+val owmApiKey: String = if (publicRelease) "" else localProps.getProperty("OWM_API_KEY", "")
+val xenoCantoApiKey: String = if (publicRelease) "" else localProps.getProperty("XENOCANTO_API_KEY", "")
+
+// Release signing — loaded from keystore.properties (gitignored). Absent on machines that
+// only build debug, in which case the release build is left unsigned.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val hasReleaseSigning = keystoreProps.getProperty("storeFile") != null
 
 android {
     namespace = "com.example.birdfinder"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.birdfinder"
+        // Play Store rejects `com.example.*`; this id is permanent once published.
+        applicationId = "io.github.mistique707.birdfinder"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -33,6 +46,17 @@ android {
         buildConfigField("String", "XENOCANTO_API_KEY", "\"$xenoCantoApiKey\"")
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -40,6 +64,9 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
