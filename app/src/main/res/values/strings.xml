@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bird Finder</string>
+    <string name="tab_listen">Listen</string>
+    <string name="tab_history">History</string>
+    <string name="tab_settings">Settings</string>
+</resources>

@@ -1,0 +1,12 @@
+# Copy to `local.properties` (which is gitignored) and fill in.
+
+sdk.dir=C:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+
+# Optional: enables weather enrichment in DetectionPipeline.
+# Get a free key at https://openweathermap.org/api
+OWM_API_KEY=
+
+# Optional: enables reference-call playback (Xeno-canto API v3 now requires a key).
+# Get a free key at https://xeno-canto.org/account
+# You can also paste this in-app under Settings -> Advanced instead.
+XENOCANTO_API_KEY=
