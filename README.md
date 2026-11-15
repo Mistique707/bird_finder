@@ -11,6 +11,17 @@ saved audio clip into a local Room database with a history screen.
   (non-commercial) — the classifier lives behind a Kotlin interface so it can be
   swapped for a commercial-friendly model later without touching the rest.
 
+## Downloads & desktop version
+
+Ready-to-use builds are on the [Releases page](https://github.com/Mistique707/bird_finder/releases):
+
+- **`BirdFinder.apk`** — install on an Android phone (allow "Install unknown apps").
+- **`BirdFinder-Desktop.zip`** — Windows PC version. Unzip, double-click
+  `Start Bird Finder.bat`, and it opens in your browser. No install needed.
+
+The desktop version is a React app in [`web/`](web/README.md) that runs the same BirdNET
+model in the browser. To develop it: `cd web && npm install && npm run dev`.
+
 ## Publishing checklist (free, non-commercial only)
 
 This app is fine to publish **for free with no ads / IAP / paid tier** — the BirdNET model
@@ -233,8 +244,9 @@ If you swap classifiers, mind these:
   wrong silently produces near-zero confidences — verified against the upstream
   whoBIRD inference loop.
 - **Output:** `[1, 6522]` raw logits → per-class sigmoid.
-- **Meta model:** input `[lat, lon, cos(toRadians(week*7.5))+1.0]` where
-  `week = ceil(dayOfYear*48/366)` ∈ [1, 48]. Output is element-wise multiplied
+- **Meta model:** input `[lat, lon, week]` where `week = ceil(dayOfYear*48/366)`
+  ∈ [1, 48] — the raw week number. (The `cos(toRadians(week*7.5))+1.0` encoding is for
+  the older V1 meta model; fed to V2 it suppresses seasonal species.) Output is element-wise multiplied
   with the sigmoid'd audio output before thresholding.
 
 ## 7. What's NOT in v1 (TODO hooks)
