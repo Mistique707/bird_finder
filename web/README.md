@@ -18,8 +18,12 @@ Opens http://localhost:5173. Microphone access requires `localhost` or HTTPS.
   repeat suppression, post-roll clips, `Space` to start/stop.
 - **Identify a file** — drag-and-drop batches of MP3 / AAC / M4A / WAV / FLAC / OGG / Opus;
   spectrogram with per-species timelines, click a segment to hear it, add results to the log.
-- **Birds near you** — BirdNET's location model lists species expected at your place for any
-  week of the year, with life-list progress.
+- **Birds near you** — BirdNET's location model scores every species for your place and each
+  week of the year. Browse by rarity tier (common → very rare), season (year-round, seasonal
+  visitors, arriving / leaving soon), bird group and IUCN status (Wikidata); search all 6,500
+  species by English, scientific or local name. Seasonality sparklines on every bird.
+- **Hunting** — Bird of the day, a hunt list with "Target found" alerts when you detect a
+  target, points by rarity, and birder levels.
 - **Bird log** — stats, 14-day activity, detections or species-list view, filters,
   multi-select delete, CSV/JSON export. Clips are stored in IndexedDB.
 - **Species panel** — Wikipedia photo + summary, your recording with the detected window

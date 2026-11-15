@@ -44,6 +44,17 @@ const handlers = {
     return run(metaModel, new Float32Array([lat, lon, week]), [1, 3]);
   },
 
+  /** All 48 weeks for every class, week-major: out[(w - 1) * n + i]. */
+  async occurrenceYear({ lat, lon }) {
+    let out;
+    for (let w = 1; w <= 48; w++) {
+      const p = await handlers.occurrence({ lat, lon, week: w });
+      out ??= new Float32Array(48 * p.length);
+      out.set(p, (w - 1) * p.length);
+    }
+    return out;
+  },
+
   async setPrior({ lat, lon, week }) {
     prior = await handlers.occurrence({ lat, lon, week });
     return true;

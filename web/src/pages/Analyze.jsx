@@ -11,7 +11,7 @@ const SAMPLES = [
 ];
 const LANE_COLORS = ['#2e6ba8', '#2a8c9e', '#c4793a', '#7a5ea8', '#3f9a5c', '#b84f6a', '#8a7a2e', '#4a7fbf'];
 
-export default function Analyze({ settings, engine, logDetections, openSpecies, showToast }) {
+export default function Analyze({ settings, engine, logDetections, announce, openSpecies, showToast }) {
   const [files, setFiles] = useState([]);
   const [selected, setSelected] = useState(null);
   const [minConf, setMinConf] = useState(settings.threshold);
@@ -151,16 +151,19 @@ export default function Analyze({ settings, engine, logDetections, openSpecies, 
               hop={hop} setHop={setHop} openSpecies={openSpecies}
               onReanalyze={() => patch(current.id, { status: 'queued', windows: [], progress: 0, logged: false })}
               onLog={async (picked) => {
+                const rows = [], lifers = [];
                 for (const sp of [...picked].reverse()) { // newest-first log, so add the best match last
                   const center = sp.best.start + 1.5;
                   const s0 = Math.max(0, center - settings.clipSec / 2), s1 = Math.min(current.duration, s0 + settings.clipSec);
                   const clip = current.samples.slice(Math.round(s0 * SAMPLE_RATE), Math.round(s1 * SAMPLE_RATE));
-                  await logDetections([{ ...sp, confidence: sp.best.confidence }], clip, {
-                    source: 'file', fileName: current.name, offsetSec: sp.best.start, clipWindow: [sp.best.start - s0, sp.best.start - s0 + 3],
+                  const r = await logDetections([{ ...sp, confidence: sp.best.confidence }], clip, {
+                    source: 'file', fileName: current.name, offsetSec: sp.best.start, clipWindow: [sp.best.start - s0, sp.best.start - s0 + 3], quiet: true,
                   });
+                  rows.push(...r.rows);
+                  lifers.push(...r.lifers);
                 }
                 patch(current.id, { logged: true });
-                showToast(`Added ${picked.length} species to your log`);
+                announce(rows, lifers);
               }}
             />
           )}

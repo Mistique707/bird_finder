@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CalendarDays, Download, ExternalLink, Image as ImageIcon, MapPin, Trash2, X } from 'lucide-react';
+import { CalendarDays, Crosshair, Download, ExternalLink, Image as ImageIcon, MapPin, Trash2, X } from 'lucide-react';
 import { gbifMap, gbifNearby, gbifSpecies, wikidata, wikiSummary, xenoCanto } from '../lib/apis.js';
 import { seasonality, weekOf, weekLabel } from '../lib/engine.js';
 import { getClip, downloadBlob } from '../lib/store.js';
@@ -12,7 +12,7 @@ const IUCN = {
   'critically endangered': 'cr', 'extinct in the wild': 'ew', extinct: 'ex', 'data deficient': 'dd',
 };
 
-export default function SpeciesDetail({ species, detection, settings, location, history, onClose, onDelete, onOpen }) {
+export default function SpeciesDetail({ species, detection, settings, location, history, hunt, toggleHunt, onClose, onDelete, onOpen }) {
   const { scientific, common } = species;
   const here = detection ?? location ?? { lat: 18.52, lon: 73.86 };
   const panelRef = useRef(null);
@@ -178,7 +178,14 @@ export default function SpeciesDetail({ species, detection, settings, location, 
         </div>
 
         <footer className="drawer-actions">
-          <button className="btn" onClick={share} disabled={sharing}><Download size={16} /> {sharing ? 'Rendering…' : 'Save share card'}</button>
+          <span className="row-gap">
+            {mine.length === 0 && (
+              <button className={`btn ${hunt.includes(scientific) ? 'hunting' : 'primary'}`} onClick={() => toggleHunt(scientific)} aria-pressed={hunt.includes(scientific)}>
+                <Crosshair size={16} /> {hunt.includes(scientific) ? 'On your hunt list' : 'Hunt this bird'}
+              </button>
+            )}
+            <button className="btn" onClick={share} disabled={sharing}><Download size={16} /> {sharing ? 'Rendering…' : 'Share card'}</button>
+          </span>
           {detection && (confirmDelete ? (
             <span className="confirm">
               Delete this detection?

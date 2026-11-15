@@ -58,6 +58,17 @@ export async function occurrence(lat, lon, week) {
   return labels.filter((l) => l.bird).map((l) => ({ ...l, p: probs[l.index] })).sort((a, b) => b.p - a.p);
 }
 
+/** Every bird with its 48 weekly occurrence values at a place (one worker round trip). */
+export async function occurrenceYear(lat, lon) {
+  const all = await call('occurrenceYear', { lat, lon });
+  const n = labels.length;
+  return labels.filter((l) => l.bird).map((l) => {
+    const weeks = new Float32Array(48);
+    for (let w = 0; w < 48; w++) weeks[w] = all[w * n + l.index];
+    return { ...l, weeks };
+  });
+}
+
 /** Occurrence of one species at a place for each of the 48 weeks — "when is it around?". */
 export async function seasonality(scientific, lat, lon) {
   const label = labels.find((l) => l.scientific === scientific);
@@ -93,24 +104,77 @@ export const LANGUAGES = [
 ];
 const BUNDLED = new Set(['ar', 'de', 'es', 'fr', 'it', 'ja', 'ko', 'ml', 'nl', 'ru', 'th', 'zh']);
 const bundledCache = new Map();
-const wikiNameCache = new Map();
+const wikiNameCache = new Map(); // `${lang}:${scientific}` → Promise<name|null>, also persisted
+const WIKI_NAMES_KEY = 'bf.wikinames';
+let persistedNames = {};
+try { persistedNames = JSON.parse(localStorage.getItem(WIKI_NAMES_KEY)) ?? {}; } catch { /* ignore */ }
+
+/** All BirdNET-bundled translations for a language (scientific → name), or null if not bundled. */
+export function bundledNames(lang) {
+  if (!BUNDLED.has(lang)) return null;
+  if (!bundledCache.has(lang)) {
+    bundledCache.set(lang, fetch(`${BASE}models/labels/labels_${lang}.txt`).then((r) => r.text())
+      .then((t) => new Map(parseLabels(t).map((l) => [l.scientific, l.common]))));
+  }
+  return bundledCache.get(lang);
+}
+
+/** Wikipedia-sourced names already fetched for a language (scientific → name), for search. */
+export function cachedWikiNames(lang) {
+  const prefix = `${lang}:`;
+  return new Map(Object.entries(persistedNames).filter(([k, v]) => v && k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
+}
 
 export async function regionalName(scientific, common, lang) {
   if (!lang) return null;
-  if (BUNDLED.has(lang)) {
-    if (!bundledCache.has(lang)) {
-      bundledCache.set(lang, fetch(`${BASE}models/labels/labels_${lang}.txt`).then((r) => r.text())
-        .then((t) => new Map(parseLabels(t).map((l) => [l.scientific, l.common]))));
-    }
-    const name = (await bundledCache.get(lang)).get(scientific);
+  const bundled = bundledNames(lang);
+  if (bundled) {
+    const name = (await bundled).get(scientific);
     return name && name !== common ? name : null;
   }
   const key = `${lang}:${scientific}`;
-  if (!wikiNameCache.has(key)) {
-    const url = `https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&format=json&redirects=1&origin=*&lllang=${lang}&titles=${encodeURIComponent(scientific)}`;
-    wikiNameCache.set(key, fetch(url).then((r) => r.json())
-      .then((j) => Object.values(j.query?.pages ?? {})[0]?.langlinks?.[0]?.['*']?.replace(/\s*\([^)]*\)$/, '') || null) // drop "(bird)"-style disambiguation
-      .catch(() => null));
-  }
+  if (key in persistedNames) return persistedNames[key];
+  if (!wikiNameCache.has(key)) wikiNameCache.set(key, queueWikiName(lang, scientific));
   return wikiNameCache.get(key);
+}
+
+// Wikipedia language links, batched: names requested in the same tick go out 50 per request.
+const wikiQueue = new Map(); // lang → Map(scientific → resolve)
+let flushTimer = null;
+function queueWikiName(lang, scientific) {
+  return new Promise((resolve) => {
+    if (!wikiQueue.has(lang)) wikiQueue.set(lang, new Map());
+    wikiQueue.get(lang).set(scientific, resolve);
+    flushTimer ??= setTimeout(flushWikiNames, 40);
+  });
+}
+async function flushWikiNames() {
+  flushTimer = null;
+  const jobs = [...wikiQueue].flatMap(([lang, m]) => {
+    const entries = [...m];
+    const out = [];
+    for (let i = 0; i < entries.length; i += 50) out.push([lang, entries.slice(i, i + 50)]);
+    return out;
+  });
+  wikiQueue.clear();
+  await Promise.all(jobs.map(async ([lang, entries]) => {
+    const found = {};
+    try {
+      const titles = entries.map(([s]) => s).join('|');
+      const j = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&format=json&redirects=1&origin=*&lllimit=max&lllang=${lang}&titles=${encodeURIComponent(titles)}`).then((r) => r.json());
+      // Follow normalisation + redirects so each requested title maps to its page.
+      const hop = (t, list) => list?.find((x) => x.from === t)?.to ?? t;
+      const byTitle = new Map(Object.values(j.query?.pages ?? {}).map((p) => [p.title, p.langlinks?.[0]?.['*']]));
+      for (const [s] of entries) {
+        const title = hop(hop(s, j.query?.normalized), j.query?.redirects);
+        // Drop "(bird)"-style disambiguation suffixes.
+        found[s] = byTitle.get(title)?.replace(/\s*\([^)]*\)$/, '') || null;
+      }
+    } catch { /* offline: resolve as unknown, don't persist */ }
+    for (const [s, resolve] of entries) {
+      resolve(found[s] ?? null);
+      if (s in found) persistedNames[`${lang}:${s}`] = found[s];
+    }
+  }));
+  try { localStorage.setItem(WIKI_NAMES_KEY, JSON.stringify(persistedNames)); } catch { /* full */ }
 }

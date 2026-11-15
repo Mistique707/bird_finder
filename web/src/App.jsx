@@ -33,6 +33,12 @@ function micError(e) {
 export default function App() {
   const [settings, setSettingsState] = useState(loadSettings);
   const [history, setHistory] = usePersisted('bf.history', loadHistory);
+  const [hunt, setHunt] = usePersisted('bf.hunt', []); // scientific names the user wants to find
+  const huntRef = useRef(hunt);
+  huntRef.current = hunt;
+  const toggleHunt = useCallback((scientific) => {
+    setHunt((h) => (h.includes(scientific) ? h.filter((s) => s !== scientific) : [...h, scientific]));
+  }, [setHunt]);
   const [engine, setEngine] = useState({ state: 'loading' });
   const [splashDone, setSplashDone] = useState(false);
   const [page, setPage] = useState('listen');
@@ -103,14 +109,22 @@ export default function App() {
     return () => { alive = false; };
   }, [location?.lat, location?.lon, settings.weather]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const showToast = useCallback((text) => {
-    setToast({ text, key: Date.now() });
+  const showToast = useCallback((text, kind = '') => {
+    setToast({ text, kind, key: Date.now() });
   }, []);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  /** Toast for newly logged rows: hunt targets beat first-ever species beat plain logs. */
+  const announce = useCallback((rows, lifers) => {
+    const targets = lifers.filter((r) => huntRef.current.includes(r.scientific));
+    if (targets.length) showToast(`🎯 Target found: ${targets.map((r) => r.common).join(', ')}!`, 'hit');
+    else if (lifers.length) showToast(`New for your log: ${lifers.map((r) => r.common).join(', ')}`, 'new');
+    else showToast(rows.length === 1 ? `Logged ${rows[0].common}` : `Logged ${rows.length} birds`);
+  }, [showToast]);
 
   // ---- Logging detections ----
   const logDetections = useCallback(async (dets, clip, meta = {}) => {
@@ -136,13 +150,14 @@ export default function App() {
       model: MODEL,
     }));
     setHistory((h) => [...rows, ...h].slice(0, 5000));
+    historyRef.current = [...rows, ...historyRef.current]; // so back-to-back calls see these as already logged
     const lifers = rows.filter((r) => !seen.has(r.scientific));
-    showToast(rows.length === 1 ? `Logged ${rows[0].common}` : `Logged ${rows.length} birds`);
+    if (!meta.quiet) announce(rows, lifers);
     if (s.notify && lifers.length && document.hidden && Notification.permission === 'granted') {
       new Notification('New bird for your log', { body: lifers.map((r) => r.common).join(', '), icon: '/favicon.png' });
     }
-    return rows;
-  }, [setHistory, showToast]);
+    return { rows, lifers };
+  }, [setHistory, showToast, announce]);
 
   const deleteDetections = useCallback((ids) => {
     const drop = new Set(ids);
@@ -189,7 +204,7 @@ export default function App() {
       // The detection window ended (now - p.time) before this clip's end.
       const len = clip.length / 48000, end = Math.max(3, len - (Date.now() - p.time) / 1000);
       logDetections(p.dets, clip, { source: 'mic', time: p.time, clipWindow: [end - 3, end] })
-        .then((rows) => setSessionLog((l) => [...rows, ...l].slice(0, 30)));
+        .then(({ rows }) => setSessionLog((l) => [...rows, ...l].slice(0, 30)));
     };
     token.flush = () => flushPending(lastClip);
 
@@ -258,8 +273,8 @@ export default function App() {
   const openSpecies = useCallback((species, detection = null) => setDetail({ species, detection }), []);
 
   const ctx = {
-    settings, updateSettings, history, location, weather, engine, mic, live, sessionLog,
-    analyserRef, toggleListening, logDetections, deleteDetections, openSpecies, locate, showToast, setPage,
+    settings, updateSettings, history, location, weather, engine, mic, live, sessionLog, hunt, toggleHunt,
+    analyserRef, toggleListening, logDetections, announce, deleteDetections, openSpecies, locate, showToast, setPage,
   };
 
   return (
@@ -305,13 +320,13 @@ export default function App() {
       {detail && (
         <SpeciesDetail
           key={detail.detection?.id ?? detail.species.scientific}
-          {...detail} settings={settings} location={location} history={history}
+          {...detail} settings={settings} location={location} history={history} hunt={hunt} toggleHunt={toggleHunt}
           onClose={() => setDetail(null)}
           onDelete={(id) => { deleteDetections([id]); setDetail(null); showToast('Detection deleted'); }}
           onOpen={openSpecies}
         />
       )}
-      {toast && <div className="toast" key={toast.key} role="status">{toast.text}</div>}
+      {toast && <div className={`toast ${toast.kind}`} key={toast.key} role="status">{toast.text}</div>}
     </>
   );
 }

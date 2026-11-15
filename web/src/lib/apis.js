@@ -12,11 +12,15 @@ export const wikiUrl = (scientific) => `https://en.wikipedia.org/wiki/${wikiTitl
 /** Photo + intro paragraph from Wikipedia. */
 export const wikiSummary = (scientific) => cached(`wiki:${scientific}`, async () => {
   const j = await json(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle(scientific)}`);
+  // Originals can be many MB; ask Wikimedia for a resized thumbnail unless the original is smaller.
+  const sized = (w) => (j.thumbnail && j.originalimage?.width > w
+    ? j.thumbnail.source.replace(/\/\d+px-/, `/${w}px-`)
+    : j.originalimage?.source ?? j.thumbnail?.source ?? null);
   return {
     title: j.title,
     extract: j.extract,
     thumb: j.thumbnail?.source ?? null,
-    image: j.originalimage?.source ?? j.thumbnail?.source ?? null,
+    image: sized(960), // Wikimedia only serves standard widths (330, 500, 960, 1280…)
     url: j.content_urls?.desktop?.page ?? wikiUrl(scientific),
   };
 });
@@ -62,6 +66,38 @@ export const wikidata = (scientific) => cached(`wd:${scientific}`, async () => {
 async function commonsFileUrl(name) {
   const j = await json(`https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(`File:${name}`)}&prop=imageinfo&iiprop=url&format=json&origin=*`);
   return Object.values(j.query?.pages ?? {})[0]?.imageinfo?.[0]?.url ?? null;
+}
+
+/**
+ * IUCN status for many species at once (scientific → 'Least concern' etc.), cached in
+ * localStorage. Wikidata answers ~200 names per query in a few seconds.
+ */
+const IUCN_KEY = 'bf.iucn';
+export async function iucnStatuses(names, onProgress) {
+  let known = {};
+  try { known = JSON.parse(localStorage.getItem(IUCN_KEY)) ?? {}; } catch { /* ignore */ }
+  const todo = names.filter((n) => !(n in known));
+  for (let i = 0; i < todo.length; i += 200) {
+    const batch = todo.slice(i, i + 200);
+    const values = batch.map((n) => `"${n.replace(/"/g, '')}"`).join(' ');
+    const q = `SELECT ?name ?statusLabel WHERE { VALUES ?name { ${values} } ?item wdt:P225 ?name ; wdt:P141 ?status .
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . } }`;
+    try {
+      const r = await fetch('https://query.wikidata.org/sparql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/sparql-results+json' },
+        body: `query=${encodeURIComponent(q)}`,
+      });
+      const j = await r.json();
+      for (const n of batch) known[n] = null;
+      for (const b of j.results.bindings) known[b.name.value] = b.statusLabel.value;
+      try { localStorage.setItem(IUCN_KEY, JSON.stringify(known)); } catch { /* full */ }
+    } catch {
+      break; // offline — keep what we have
+    }
+    onProgress?.({ ...known });
+  }
+  return known;
 }
 
 /** Best-rated Xeno-canto recordings (needs a free v3 key). */
