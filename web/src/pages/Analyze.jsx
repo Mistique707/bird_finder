@@ -54,7 +54,7 @@ export default function Analyze({ settings, engine, logDetections, announce, ope
         }
         patch(next.id, { status: 'done', progress: 1, hop });
       } catch (e) {
-        patch(next.id, { status: 'error', error: e.name === 'EncodingError' ? 'This audio format can’t be decoded by the browser.' : e.message });
+        patch(next.id, { status: 'error', error: e.name === 'EncodingError' ? 'Unsupported audio format.' : e.message });
       } finally {
         busyRef.current = false;
         setFiles((fs) => [...fs]); // nudge the effect to pick up the next queued file
@@ -70,7 +70,7 @@ export default function Analyze({ settings, engine, logDetections, announce, ope
       const blob = await fetch(url).then((r) => r.blob());
       addFiles([new File([blob], title.replace(/^File:/, ''), { type: blob.type })]);
     } catch {
-      showToast('Couldn’t download the sample — are you online?');
+      showToast('Couldn’t download the sample.');
     } finally {
       setLoadingSample(null);
     }
@@ -88,7 +88,7 @@ export default function Analyze({ settings, engine, logDetections, announce, ope
       <header className="page-head">
         <div>
           <h1>Identify a recording</h1>
-          <p>Drop in recordings from a field recorder or phone — MP3, AAC/M4A, WAV, FLAC, OGG, Opus. Everything is analysed on this PC.</p>
+          <p>MP3, AAC, WAV, FLAC, OGG or Opus.</p>
         </div>
       </header>
 
@@ -106,7 +106,7 @@ export default function Analyze({ settings, engine, logDetections, announce, ope
         </div>
         {!files.length && (
           <div className="samples">
-            <span>No recording handy? Try</span>
+            <span>Samples:</span>
             {SAMPLES.map(([name, title]) => (
               <button key={title} className="chip-btn" onClick={() => loadSample(title)} disabled={!!loadingSample || engine.state !== 'ready'}>
                 {loadingSample === title ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} {name}
@@ -306,11 +306,11 @@ function FileResult({ f, settings, minConf, setMinConf, hop, setHop, openSpecies
             <button className="btn primary" disabled={f.status !== 'done' || !picked.length} onClick={() => onLog(picked)}>
               <Plus size={16} /> Add {picked.length} to bird log
             </button>
-            <span className="fine">Saves a {settings.clipSec}s clip around each bird’s best match.</span>
+            <span className="fine">Saves a {settings.clipSec} s clip of each.</span>
           </div>
         </>
       ) : f.status === 'done' ? (
-        <p className="empty">No birds above {Math.round(minConf * 100)}%. Lower the slider, or try turning off the location filter in Settings if this recording is from elsewhere.</p>
+        <p className="empty">No birds above {Math.round(minConf * 100)}%.</p>
       ) : null}
     </div>
   );

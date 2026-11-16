@@ -71,7 +71,7 @@ export default function SpeciesDetail({ species, detection, settings, location, 
               {clip ? (
                 <>
                   <ClipPlayer src={clip} highlight={clipHighlight} label="your recording" />
-                  <p className="fine"><span className="hl-key" /> highlighted = the 3 s window BirdNET heard it in</p>
+                  <p className="fine"><span className="hl-key" /> The 3 seconds it was identified in</p>
                 </>
               ) : <p className="muted">{detection.clipId ? (clip === undefined ? 'Loading clip…' : 'This clip is no longer stored.') : `Identified from ${detection.fileName ?? 'a file'}${detection.offsetSec != null ? ` at ${Math.round(detection.offsetSec)} s` : ''}.`}</p>}
             </section>
@@ -80,11 +80,11 @@ export default function SpeciesDetail({ species, detection, settings, location, 
           {settings.referenceCalls && (
             <section>
               <h3>Reference call</h3>
-              {wd === undefined && !xc?.length && <p className="muted">Looking for a reference recording…</p>}
+              {wd === undefined && !xc?.length && <p className="muted">Loading…</p>}
               {wd?.audio && (
                 <div className="ref">
                   <ClipPlayer src={wd.audio} label="reference call" />
-                  <p className="fine">Wikimedia Commons recording via Wikidata</p>
+                  <p className="fine">Wikimedia Commons</p>
                 </div>
               )}
               {xc?.map((r) => (
@@ -98,7 +98,7 @@ export default function SpeciesDetail({ species, detection, settings, location, 
               ))}
               {wd !== undefined && !wd?.audio && !xc?.length && (
                 <p className="muted">
-                  No keyless recording found.{!settings.xenoCantoKey && ' Add a free Xeno-canto key in Settings → Advanced for more.'}
+                  None found.{!settings.xenoCantoKey && ' Add a Xeno-canto key in Settings for more.'}
                 </p>
               )}
             </section>
@@ -113,7 +113,7 @@ export default function SpeciesDetail({ species, detection, settings, location, 
           )}
 
           <section>
-            <h3>When to find it near {detection ? 'this spot' : 'you'}</h3>
+            <h3>Seasonality here</h3>
             {season ? (
               <>
                 <div className="season" role="img" aria-label="Expected occurrence by week">
@@ -122,25 +122,25 @@ export default function SpeciesDetail({ species, detection, settings, location, 
                   ))}
                 </div>
                 <div className="season-axis">{['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map((m, i) => <span key={i}>{m}</span>)}</div>
-                <p className="fine">BirdNET location model · {Math.round(season[thisWeek - 1] * 100)}% likely around this week</p>
+                <p className="fine">{Math.round(season[thisWeek - 1] * 100)}% likely this week</p>
               </>
             ) : season === undefined ? <div className="skeleton" style={{ height: 70 }} /> : <p className="muted">Not in BirdNET’s location model.</p>}
           </section>
 
           <section className="facts">
-            <h3>Quick facts</h3>
+            <h3>Facts</h3>
             <dl>
               <dt>Order</dt><dd>{taxon?.order ?? '—'}</dd>
               <dt>Family</dt><dd>{taxon?.family ?? '—'}</dd>
               <dt>Conservation</dt><dd>{wd?.status ?? '—'}</dd>
-              <dt>Records nearby</dt><dd>{nearby != null ? `${nearby.toLocaleString()} on GBIF within ~50 km` : '—'}</dd>
+              <dt>Records nearby</dt><dd>{nearby != null ? `${nearby.toLocaleString()} within 50 km (GBIF)` : '—'}</dd>
               {mine.length > 0 && (<><dt>You’ve logged it</dt><dd>{mine.length}× · first {new Date(mine[mine.length - 1].time).toLocaleDateString()}</dd></>)}
             </dl>
           </section>
 
           {taxon && (
             <section>
-              <h3>Where it’s been recorded</h3>
+              <h3>Sightings</h3>
               <div className="range-map">
                 <img src={gbifMap(taxon.key).base} alt="" />
                 <img src={gbifMap(taxon.key).density} alt={`Map of GBIF records for ${common}`} />
@@ -165,7 +165,7 @@ export default function SpeciesDetail({ species, detection, settings, location, 
 
           {mine.length > 1 && (
             <section>
-              <h3>Other times you heard it</h3>
+              <h3>Earlier detections</h3>
               <div className="mini-list">
                 {mine.filter((m) => m.id !== detection?.id).slice(0, 5).map((m) => (
                   <button key={m.id} onClick={() => onOpen(species, m)}>

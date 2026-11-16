@@ -7,9 +7,9 @@ import { DEFAULT_SETTINGS, clearClips, downloadBlob } from '../lib/store.js';
 import { Segmented, Toggle, fmtCoords } from '../components/common.jsx';
 
 function sensitivityLabel(t) {
-  if (t >= 0.85) return ['Strict', 'Only very confident matches'];
-  if (t >= 0.6) return ['Balanced', 'Recommended for most places'];
-  return ['Lenient', 'More matches, more false positives'];
+  if (t >= 0.85) return 'Strict';
+  if (t >= 0.6) return 'Balanced';
+  return 'Lenient';
 }
 
 export default function Settings({ settings, updateSettings, history, location, locate, deleteDetections, showToast, mic }) {
@@ -17,7 +17,7 @@ export default function Settings({ settings, updateSettings, history, location, 
   const [advanced, setAdvanced] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const s = settings;
-  const [label, hint] = sensitivityLabel(s.threshold);
+  const label = sensitivityLabel(s.threshold);
 
   const refreshMics = () => listMics().then(setMics).catch(() => {});
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function Settings({ settings, updateSettings, history, location, 
 
   return (
     <div className="settings">
-      <header className="page-head"><div><h1>Settings</h1><p>Changes save automatically.</p></div></header>
+      <header className="page-head"><div><h1>Settings</h1></div></header>
 
       <div className="settings-cols">
         <div>
@@ -45,17 +45,16 @@ export default function Settings({ settings, updateSettings, history, location, 
             <div className="field">
               <div className="field-head"><b>Sensitivity</b><span className="pill">{label} · {Math.round(s.threshold * 100)}%</span></div>
               <input type="range" min="0.3" max="0.95" step="0.05" value={s.threshold} onChange={(e) => updateSettings({ threshold: +e.target.value })} aria-label="Confidence threshold" />
-              <small>{hint}. Birds are logged when BirdNET’s score reaches this threshold.</small>
+              <small>Minimum score for a bird to be logged.</small>
             </div>
             <div className="field">
               <b>Recording length</b>
               <Segmented label="Recording length" value={s.clipSec} onChange={(v) => updateSettings({ clipSec: v })} options={[[3, '3 s'], [6, '6 s'], [9, '9 s']]} />
-              <small>Saved clip length. Identification always analyses 3-second windows.</small>
+              <small>Length of the saved clip.</small>
             </div>
             <div className="field">
               <b>Ignore repeats of the same bird</b>
               <Segmented label="Repeat window" value={s.dedupeMin} onChange={(v) => updateSettings({ dedupeMin: v })} options={[[0, 'Off'], [1, '1 min'], [3, '3 min'], [5, '5 min'], [10, '10 min']]} />
-              <small>Keeps the log tidy when a bird calls continuously.</small>
             </div>
           </Section>
 
@@ -66,37 +65,33 @@ export default function Settings({ settings, updateSettings, history, location, 
                 <option value="">System default</option>
                 {mics.map((m, i) => <option key={m.deviceId} value={m.deviceId}>{m.label || `Microphone ${i + 1}`}</option>)}
               </select>
-              <small>
-                {micsNeedPermission ? 'Start listening once to see device names. ' : ''}
-                USB or shotgun mics give far better results than a laptop’s built-in mic. Applies the next time you start listening.
-                Echo cancellation, noise suppression and auto-gain are always off, since they distort birdsong.
-              </small>
+              <small>{micsNeedPermission ? 'Start listening once to see device names. ' : ''}An external mic works much better than a built-in one.</small>
             </div>
           </Section>
 
           <Section title="Location">
             <div className="field">
-              <b>Where you’re listening</b>
+              <b>Location</b>
               <Segmented label="Location source" value={s.locationSource} onChange={(v) => updateSettings({ locationSource: v })}
-                options={[['browser', 'Use this device’s location'], ['manual', 'Choose a place']]} />
+                options={[['browser', 'This device'], ['manual', 'Choose a place']]} />
             </div>
             {s.locationSource === 'manual' && <PlacePicker value={s.manual} onPick={(p) => updateSettings({ manual: p })} />}
             {location && (
               <div className="loc-now">
                 <MapPin size={16} />
-                <span><b>{location.name ?? 'Unknown place'}</b><small>{fmtCoords(location.lat, location.lon)}{location.source === 'fallback' ? ' · location unavailable, using the fallback place' : ''}</small></span>
+                <span><b>{location.name ?? 'Unknown place'}</b><small>{fmtCoords(location.lat, location.lon)}{location.source === 'fallback' ? ' · couldn’t get your location' : ''}</small></span>
                 {s.locationSource === 'browser' && <button className="btn ghost sm" onClick={locate}><Crosshair size={14} /> Refresh</button>}
               </div>
             )}
-            <Toggle label="Location & season filter" hint="Uses BirdNET’s location model to favour birds that actually occur here at this time of year." checked={s.useLocation} onChange={(v) => updateSettings({ useLocation: v })} />
+            <Toggle label="Location & season filter" hint="Prefer birds expected here at this time of year." checked={s.useLocation} onChange={(v) => updateSettings({ useLocation: v })} />
             {s.useLocation && (
               <div className="field">
                 <b>Filter style</b>
                 <Segmented label="Filter style" value={s.locationMode} onChange={(v) => updateSettings({ locationMode: v })}
                   options={[['weight', 'Weighted'], ['filter', 'Hard filter']]} />
                 <small>{s.locationMode === 'weight'
-                  ? 'Score × how likely the bird is here (same as the Android app). Unusual visitors need a very clear call.'
-                  : `Drops species below ${Math.round(s.filterMin * 100)}% expected occurrence; everything else keeps its raw score (BirdNET-Analyzer style).`}</small>
+                  ? 'Scores are multiplied by how likely the bird is here.'
+                  : `Hides birds under ${Math.round(s.filterMin * 100)}% likely here.`}</small>
               </div>
             )}
           </Section>
@@ -108,21 +103,20 @@ export default function Settings({ settings, updateSettings, history, location, 
           </Section>
 
           <Section title="Identification">
-            <Toggle label="Show bird photos" hint="From Wikipedia — no key needed." checked={s.showPhotos} onChange={(v) => updateSettings({ showPhotos: v })} />
-            <Toggle label="Reference calls to compare" hint="Wikimedia Commons recordings; Xeno-canto too with a key (Advanced)." checked={s.referenceCalls} onChange={(v) => updateSettings({ referenceCalls: v })} />
-            <Toggle label="Log weather with detections" hint="Open-Meteo, no key needed." checked={s.weather} onChange={(v) => updateSettings({ weather: v })} />
+            <Toggle label="Show bird photos" checked={s.showPhotos} onChange={(v) => updateSettings({ showPhotos: v })} />
+            <Toggle label="Reference calls to compare" hint="From Wikimedia Commons, plus Xeno-canto with a key." checked={s.referenceCalls} onChange={(v) => updateSettings({ referenceCalls: v })} />
+            <Toggle label="Log weather with detections" checked={s.weather} onChange={(v) => updateSettings({ weather: v })} />
             <div className="field">
               <b>Also show names in</b>
               <select value={s.regionalLang} onChange={(e) => updateSettings({ regionalLang: e.target.value })}>
                 {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
               </select>
-              <small>Shown alongside the English name where a translation exists. Indian languages come from Wikipedia.</small>
             </div>
-            <Toggle label="Desktop notification for new birds" hint="When a species you’ve never logged is heard while this tab is in the background." checked={s.notify} onChange={setNotify} />
+            <Toggle label="Notify me about new birds" hint="Only when the tab is in the background." checked={s.notify} onChange={setNotify} />
           </Section>
 
           <Section title="Data">
-            <p className="fine">{history.length} detections stored in this browser. Clips are kept in local storage on this PC.</p>
+            <p className="fine">{history.length} detections saved in this browser.</p>
             <div className="row-gap">
               <button className="btn" onClick={() => downloadBlob(new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' }), 'bird-log.json')} disabled={!history.length}>
                 <Download size={16} /> Export everything
@@ -148,12 +142,12 @@ export default function Settings({ settings, updateSettings, history, location, 
                 <div className="field">
                   <div className="field-head"><b>BirdNET sensitivity</b><span className="pill">{s.sensitivity.toFixed(2)}</span></div>
                   <input type="range" min="0.5" max="1.5" step="0.05" value={s.sensitivity} onChange={(e) => updateSettings({ sensitivity: +e.target.value })} aria-label="BirdNET sensitivity" />
-                  <small>Scales the model’s raw output before the sigmoid. Above 1 finds quieter or partial calls; below 1 is more conservative.</small>
+                  <small>Higher picks up quieter calls but makes more mistakes.</small>
                 </div>
                 <div className="field">
                   <b>Window step</b>
                   <Segmented label="Window step" value={s.stepSec} onChange={(v) => updateSettings({ stepSec: v })} options={[[0.75, '0.75 s'], [1, '1 s'], [1.5, '1.5 s'], [3, '3 s']]} />
-                  <small>How often a new 3 s window is analysed while listening. Smaller = faster reactions, more CPU.</small>
+                  <small>How often to check while listening. Smaller uses more CPU.</small>
                 </div>
                 {s.locationMode === 'filter' && (
                   <div className="field">
@@ -164,7 +158,7 @@ export default function Settings({ settings, updateSettings, history, location, 
                 <div className="field">
                   <b>Xeno-canto API key</b>
                   <input type="password" autoComplete="off" spellCheck={false} placeholder="Optional" value={s.xenoCantoKey} onChange={(e) => updateSettings({ xenoCantoKey: e.target.value.trim() })} />
-                  <small>Adds top-rated reference recordings. Get a free key at <a href="https://xeno-canto.org/account" target="_blank" rel="noreferrer">xeno-canto.org/account</a>. Stored only in this browser.</small>
+                  <small>Optional. Free at <a href="https://xeno-canto.org/account" target="_blank" rel="noreferrer">xeno-canto.org</a>.</small>
                 </div>
                 <button className="btn ghost" onClick={() => { updateSettings({ ...DEFAULT_SETTINGS, xenoCantoKey: s.xenoCantoKey }); showToast('Settings reset'); }}>
                   <RotateCcw size={16} /> Reset settings to defaults
@@ -205,7 +199,7 @@ function PlacePicker({ value, onPick }) {
 
   return (
     <div className="field place-picker">
-      <label className="search"><Search size={16} /><input placeholder="Search a town, park or region…" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+      <label className="search"><Search size={16} /><input placeholder="Search for a place" value={q} onChange={(e) => setQ(e.target.value)} /></label>
       {results.length > 0 && (
         <ul className="place-results">
           {results.map((r) => (

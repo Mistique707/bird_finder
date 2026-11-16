@@ -8,7 +8,7 @@ const FACTS = [
   'Owls can rotate their heads about 270 degrees.',
   'The Arctic Tern migrates around 70,000 km round-trip each year.',
   'Crows can recognise and remember individual human faces.',
-  'The bee hummingbird is the smallest bird — under 2 grams.',
+  'The bee hummingbird is the smallest bird, under 2 grams.',
   'Flamingos get their pink colour from the food they eat.',
   'A woodpecker can peck around 20 times per second.',
   'The peregrine falcon can dive at over 300 km/h.',
@@ -18,7 +18,7 @@ const FACTS = [
   'Mockingbirds can imitate dozens of other birds’ songs.',
   'Common swifts can stay airborne for months without landing.',
   'The Asian Koel’s rising “ku-oo” is one of India’s loudest summer sounds.',
-  'Songbirds learn their songs much like babies learn to talk — by listening and practising.',
+  'Songbirds learn their songs by listening and practising, much like babies learn to talk.',
   'The dawn chorus peaks in the hour around sunrise, when sound carries furthest.',
   'Lyrebirds can mimic chainsaws and camera shutters.',
 ];
@@ -55,7 +55,7 @@ export default function Splash({ engine, onDone }) {
           <p>{fact}</p>
         </div>
         <p className="splash-hint">
-          {engine.state === 'error' ? `Couldn’t load the model: ${engine.error}` : engine.state === 'ready' ? 'Click to continue' : 'Warming up BirdNET…'}
+          {engine.state === 'error' ? `Couldn’t load the model: ${engine.error}` : engine.state === 'ready' ? 'Click to continue' : 'Loading BirdNET…'}
         </p>
       </div>
       <div className={`splash-bar ${engine.state}`}><i /></div>

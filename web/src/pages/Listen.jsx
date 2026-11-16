@@ -142,7 +142,7 @@ export default function Listen({ settings, engine, mic, live, sessionLog, analys
               ))}
             </ul>
           ) : (
-            <p className="empty">{on ? 'Listening for calls… BirdNET checks every few seconds.' : 'Live matches will appear here while you listen.'}</p>
+            <p className="empty">{on ? 'Listening…' : 'Nothing yet.'}</p>
           )}
         </div>
 
@@ -169,9 +169,9 @@ export default function Listen({ settings, engine, mic, live, sessionLog, analys
             </ul>
           ) : (
             <ol className="steps">
-              <li><b>Listen to nature</b><span>Point your mic toward the sounds around you — a window works well.</span></li>
-              <li><b>Find the bird</b><span>BirdNET identifies likely species from each 3-second slice of sound.</span></li>
-              <li><b>Build your bird log</b><span>Every discovery is saved with its recording, time, place and weather.</span></li>
+              <li><b>Listen to nature</b><span>Point your mic at the sounds around you.</span></li>
+              <li><b>Find the bird</b><span>Bird Finder names the species from its call.</span></li>
+              <li><b>Build your bird log</b><span>Each find is saved with its recording.</span></li>
             </ol>
           )}
         </div>
@@ -184,7 +184,7 @@ export default function Listen({ settings, engine, mic, live, sessionLog, analys
               <span>
                 <b>{location.name ?? 'Locating…'}</b>
                 <small>{fmtCoords(location.lat, location.lon)}{location.accuracy ? ` · ±${Math.round(location.accuracy)} m` : ''}
-                  {location.source === 'fallback' && ' · default location'}</small>
+                  {location.source === 'fallback' && ' · default'}</small>
               </span>
             </div>
           )}
@@ -196,13 +196,12 @@ export default function Listen({ settings, engine, mic, live, sessionLog, analys
               </div>
               <div className="cond-row">
                 <Wind size={18} />
-                <span><b>{Math.round(weather.wind)} km/h wind</b><small>{weather.wind > 25 ? 'Windy — expect noisier recordings' : 'Good listening conditions'}</small></span>
+                <span><b>{Math.round(weather.wind)} km/h wind</b></span>
               </div>
               <div className="cond-row split">
                 <span><Sunrise size={18} /><b>{weather.sunrise.slice(11)}</b></span>
                 <span><Sunset size={18} /><b>{weather.sunset.slice(11)}</b></span>
               </div>
-              <p className="fine">Birds sing most in the hour around sunrise — the dawn chorus.</p>
             </>
           )}
           <div className="cond-settings">

@@ -24,8 +24,8 @@ const PAGES = [
 ];
 
 function micError(e) {
-  if (e?.name === 'NotAllowedError') return 'Microphone access was blocked. Allow it from the address bar and try again.';
-  if (e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError') return 'That microphone isn’t available. Pick another one in Settings.';
+  if (e?.name === 'NotAllowedError') return 'Microphone access is blocked. Allow it in the address bar.';
+  if (e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError') return 'Microphone not found. Pick another in Settings.';
   if (e?.name === 'NotReadableError') return 'The microphone is in use by another app.';
   return e?.message ?? String(e);
 }
@@ -121,8 +121,8 @@ export default function App() {
   /** Toast for newly logged rows: hunt targets beat first-ever species beat plain logs. */
   const announce = useCallback((rows, lifers) => {
     const targets = lifers.filter((r) => huntRef.current.includes(r.scientific));
-    if (targets.length) showToast(`🎯 Target found: ${targets.map((r) => r.common).join(', ')}!`, 'hit');
-    else if (lifers.length) showToast(`New for your log: ${lifers.map((r) => r.common).join(', ')}`, 'new');
+    if (targets.length) showToast(`Target found: ${targets.map((r) => r.common).join(', ')}`, 'hit');
+    else if (lifers.length) showToast(`New: ${lifers.map((r) => r.common).join(', ')}`, 'new');
     else showToast(rows.length === 1 ? `Logged ${rows[0].common}` : `Logged ${rows.length} birds`);
   }, [showToast]);
 

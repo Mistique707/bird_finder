@@ -77,10 +77,10 @@ export default function Log({ settings, history, openSpecies, deleteDetections, 
   if (!history.length) {
     return (
       <div className="log">
-        <header className="page-head"><div><h1>Bird log</h1><p>Your detections live here, saved on this PC.</p></div></header>
+        <header className="page-head"><div><h1>Bird log</h1></div></header>
         <div className="card empty-state">
           <h2>No birds logged yet</h2>
-          <p>Start listening, or identify a recording, and every bird you find will be saved here with its clip, time, place and weather.</p>
+          <p>Start listening or identify a recording.</p>
           <div className="row-gap">
             <button className="btn primary" onClick={() => setPage('listen')}>Start listening</button>
             <button className="btn" onClick={() => setPage('analyze')}>Identify a file</button>
@@ -93,7 +93,7 @@ export default function Log({ settings, history, openSpecies, deleteDetections, 
   return (
     <div className="log">
       <header className="page-head">
-        <div><h1>Bird log</h1><p>Everything you’ve heard, saved on this PC.</p></div>
+        <div><h1>Bird log</h1></div>
         <div className="row-gap">
           <button className="btn" onClick={exportCsv}><Download size={16} /> CSV</button>
           <button className="btn" onClick={exportJson}><FileJson size={16} /> JSON</button>
@@ -128,7 +128,7 @@ export default function Log({ settings, history, openSpecies, deleteDetections, 
           <b>{selected.size} selected</b>
           {confirm ? (
             <>
-              <span>Delete them and their clips? This can’t be undone.</span>
+              <span>Delete these and their clips?</span>
               <button className="btn danger" onClick={() => { deleteDetections([...selected]); setSelected(new Set()); setConfirm(false); showToast(`Deleted ${selected.size} detections`); }}>Delete</button>
               <button className="btn ghost" onClick={() => setConfirm(false)}>Cancel</button>
             </>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Crosshair, Languages, MapPin, Search, Sparkles, Trophy, X } from 'lucide-react';
+import { Check, Crosshair, Languages, MapPin, Search, X } from 'lucide-react';
 import { occurrenceYear, weekOf, weekLabel, bundledNames, cachedWikiNames, LANGUAGES } from '../lib/engine.js';
 import { iucnStatuses } from '../lib/apis.js';
 import { TIERS, UNLIKELY, tierOf, seasonOf, groupOf, GROUP_LABELS, levelOf, dailyPick, iucnCode, IUCN } from '../lib/explore.js';
@@ -147,79 +147,69 @@ export default function Explore({ settings, updateSettings, engine, location, hi
         <label className="lang-pick">
           <Languages size={16} />
           <select value={lang} onChange={(e) => updateSettings({ regionalLang: e.target.value })} aria-label="Show names in">
-            {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{code ? name : 'Names: English only'}</option>)}
+            {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{code ? name : 'English names'}</option>)}
           </select>
         </label>
       </header>
 
-      {!year ? (
-        <div className="explore-top"><div className="card skeleton" style={{ height: 220 }} /><div className="card skeleton" style={{ height: 220 }} /><div className="card skeleton" style={{ height: 220 }} /></div>
-      ) : (
+      {year && (
         <div className="explore-top">
-          <div className="card level-card">
-            <div className="level-head">
-              <Trophy size={22} />
-              <div><small>Your level</small><b>{score.level.name}</b></div>
-              <span className="pts">{score.points.toLocaleString()} pts</span>
-            </div>
-            <div className="level-bar"><i style={{ width: `${score.level.progress * 100}%` }} /></div>
-            <small className="fine">{score.level.next ? `${score.level.next - score.points} pts to ${score.level.nextName}` : 'Top level reached!'}</small>
-            <ul className="tier-progress">
-              {TIERS.map((t) => (
-                <li key={t.id}>
-                  <span className={`tier-dot t-${t.id}`} /> {t.label}
-                  <b>{score.perTier[t.id].seen}/{score.perTier[t.id].total}</b>
-                  <small>+{t.points}</small>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {birdOfDay ? (
-            <div className="card botd">
+            <section className="card botd">
               <BirdPhoto scientific={birdOfDay.scientific} enabled={settings.showPhotos} large className="botd-photo" />
               <div className="botd-text">
-                <span className="eyebrow"><Sparkles size={13} /> Bird of the day</span>
+                <span className="eyebrow">Bird of the day</span>
                 <h2>{birdOfDay.common}</h2>
                 <RegionalName scientific={birdOfDay.scientific} common={birdOfDay.common} lang={lang} />
                 <i className="sci">{birdOfDay.scientific}</i>
                 <p>
                   <span className={`tier-badge t-${birdOfDay.tier.id}`}>{birdOfDay.tier.label}</span>
-                  {' '}{Math.round(birdOfDay.p * 100)}% likely this week · best around {monthOfWeek(birdOfDay.season.peakWeek)}
+                  {' '}{Math.round(birdOfDay.p * 100)}% this week, peaks in {monthOfWeek(birdOfDay.season.peakWeek)}
                 </p>
                 <div className="row-gap">
                   <button className={`btn ${hunt.includes(birdOfDay.scientific) ? 'hunting' : 'primary'}`} onClick={() => toggleHunt(birdOfDay.scientific)}>
-                    <Crosshair size={15} /> {hunt.includes(birdOfDay.scientific) ? 'Hunting' : `Hunt it · +${birdOfDay.tier.points}`}
+                    <Crosshair size={15} /> {hunt.includes(birdOfDay.scientific) ? 'On hunt list' : 'Hunt'}
                   </button>
-                  <button className="btn" onClick={() => openSpecies(birdOfDay)}>Learn more</button>
+                  <button className="btn" onClick={() => openSpecies(birdOfDay)}>Details</button>
                 </div>
               </div>
-            </div>
-          ) : <div className="card botd empty-botd"><p className="empty">You’ve logged every uncommon and rare bird around this week. Impressive!</p></div>}
+            </section>
+          ) : <section className="card botd empty-botd"><p className="empty">No uncommon birds left to find this week.</p></section>}
 
-          <div className="card hunt-card">
-            <div className="card-head">
-              <h2 className="eyebrow"><Crosshair size={13} /> Hunt list</h2>
-              {huntSpecies.length > 0 && <small>{huntSpecies.filter((s) => seen.has(s.scientific)).length}/{huntSpecies.length} found</small>}
+          <section className="card progress">
+            <div className="progress-head">
+              <span>
+                <small>Level</small>
+                <b>{score.level.name}</b>
+              </span>
+              <span className="pts">{score.points.toLocaleString()} pts</span>
             </div>
-            {huntSpecies.length ? (
-              <ul className="hunt-list">
-                {huntSpecies.map((s) => (
-                  <li key={s.scientific} className={seen.has(s.scientific) ? 'found' : ''}>
-                    <button className="hunt-open" onClick={() => openSpecies(s)}>
-                      <BirdPhoto scientific={s.scientific} enabled={settings.showPhotos} className="sm" />
-                      <span className="names"><b>{s.common}</b><small>{seen.has(s.scientific) ? 'Found!' : `${s.tier.label} · ${Math.round(s.p * 100)}% now`}</small></span>
-                    </button>
-                    {seen.has(s.scientific) ? <Check size={18} className="ok" /> : (
-                      <button className="icon-btn" onClick={() => toggleHunt(s.scientific)} aria-label={`Remove ${s.common} from hunt list`}><X size={15} /></button>
-                    )}
-                  </li>
+            <div className="level-bar"><i style={{ width: `${score.level.progress * 100}%` }} /></div>
+            <small className="fine">{score.level.next ? `${score.level.next - score.points} to ${score.level.nextName}` : 'Max level'}</small>
+            <table className="tier-table">
+              <tbody>
+                {TIERS.map((t) => (
+                  <tr key={t.id}>
+                    <td><span className={`tier-dot t-${t.id}`} /> {t.label}</td>
+                    <td>{score.perTier[t.id].seen}/{score.perTier[t.id].total}</td>
+                    <td>{t.points} pts</td>
+                  </tr>
                 ))}
-              </ul>
-            ) : (
-              <p className="empty">Tap <Crosshair size={13} /> on any bird to add it here. When you hear one, you’ll get a “Target found” alert and the points.</p>
-            )}
-          </div>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      )}
+
+      {huntSpecies.length > 0 && (
+        <div className="hunt-strip">
+          <span className="hunt-label">Hunt list <small>{huntSpecies.filter((s) => seen.has(s.scientific)).length}/{huntSpecies.length}</small></span>
+          {huntSpecies.map((s) => (
+            <span key={s.scientific} className={`hunt-chip ${seen.has(s.scientific) ? 'found' : ''}`}>
+              <button onClick={() => openSpecies(s)}>{seen.has(s.scientific) && <Check size={13} />}{s.common}</button>
+              {!seen.has(s.scientific) && <button className="x" onClick={() => toggleHunt(s.scientific)} aria-label={`Remove ${s.common} from hunt list`}><X size={13} /></button>}
+            </span>
+          ))}
         </div>
       )}
 
@@ -227,7 +217,7 @@ export default function Explore({ settings, updateSettings, engine, location, hi
         <div className="control-row">
           <label className="search grow">
             <Search size={16} />
-            <input placeholder={`Search all 6,500 species${lang ? ' — English, scientific or local name' : ''}`} value={query} onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }} />
+            <input placeholder="Search species" value={query} onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }} />
             {query && <button className="icon-btn" onClick={() => setQuery('')} aria-label="Clear search"><X size={14} /></button>}
           </label>
           <label className="week-compact">
@@ -273,15 +263,12 @@ export default function Explore({ settings, updateSettings, engine, location, hi
           <label className="check"><input type="checkbox" checked={filters.huntOnly} onChange={(e) => setFilter({ huntOnly: e.target.checked })} /> Hunt list</label>
           {filtersOn && <button className="link-btn" onClick={() => { setFilters(DEFAULT_FILTERS); setQuery(''); setShown(PAGE); }}><X size={14} /> Reset</button>}
         </div>
-        {iucnLoading && filters.status !== 'all' && <p className="fine">Loading conservation statuses from Wikidata…</p>}
+        {iucnLoading && filters.status !== 'all' && <p className="fine">Loading statuses…</p>}
       </div>
 
       {year && (
         <>
-          <p className="fine">
-            {filtered.length} {filtered.length === 1 ? 'species' : 'species'}
-            {q ? ' match your search' : ' with at least 0.5% expected occurrence'} · tap a bird for details, <Crosshair size={12} /> to hunt it
-          </p>
+          <p className="fine">{filtered.length} species</p>
           <div className="grid">
             {filtered.slice(0, shown).map((s) => (
               <Tile key={s.scientific} s={s} week={week} lang={lang} photos={settings.showPhotos}
@@ -289,7 +276,7 @@ export default function Explore({ settings, updateSettings, engine, location, hi
                 onOpen={() => openSpecies(s)} onHunt={() => toggleHunt(s.scientific)} />
             ))}
           </div>
-          {!filtered.length && <div className="card empty-state"><h2>No birds match</h2><p>Try a different rarity or season, or clear the filters.</p></div>}
+          {!filtered.length && <p className="empty">No birds match these filters.</p>}
           {shown < filtered.length && <div ref={sentinel} className="sentinel" />}
         </>
       )}
