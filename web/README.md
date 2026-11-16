@@ -1,47 +1,53 @@
-# Bird Finder — Desktop (web)
+# Bird Finder — Desktop
 
-React + Vite desktop companion to the Android app. BirdNET runs **in the browser** via
-[LiteRT.js](https://www.npmjs.com/package/@litertjs/core) in a Web Worker — no server, and
-audio never leaves the machine.
+The PC version of Bird Finder. It's a React app that runs the BirdNET model directly in the
+browser, so there's no server and no audio ever leaves your computer.
 
-```bash
-cd web
+Just want to use it? Download `BirdFinder-Desktop.zip` from the
+[Releases page](https://github.com/Mistique707/bird_finder/releases) instead.
+
+## Running it
+
+You need Node.js 20 or newer.
+
+```
 npm install
-npm run dev        # first run downloads the BirdNET models (~40 MB) into public/models
+npm run dev
 ```
 
-Opens http://localhost:5173. Microphone access requires `localhost` or HTTPS.
+It opens at http://localhost:5173. The first run downloads the BirdNET models (about 40 MB) into
+`public/models`. The microphone only works on `localhost` or over HTTPS.
 
-## Features
+`npm run build` creates a static site in `dist/` that you can host anywhere.
 
-- **Listen** — live mic ID (3 s windows, configurable step), live spectrogram, level meter,
-  repeat suppression, post-roll clips, `Space` to start/stop.
-- **Identify a file** — drag-and-drop batches of MP3 / AAC / M4A / WAV / FLAC / OGG / Opus;
-  spectrogram with per-species timelines, click a segment to hear it, add results to the log.
-- **Birds near you** — BirdNET's location model scores every species for your place and each
-  week of the year. Browse by rarity tier (common → very rare), season (year-round, seasonal
-  visitors, arriving / leaving soon), bird group and IUCN status (Wikidata); search all 6,500
-  species by English, scientific or local name. Seasonality sparklines on every bird.
-- **Hunting** — Bird of the day, a hunt list with "Target found" alerts when you detect a
-  target, points by rarity, and birder levels.
-- **Bird log** — stats, 14-day activity, detections or species-list view, filters,
-  multi-select delete, CSV/JSON export. Clips are stored in IndexedDB.
-- **Species panel** — Wikipedia photo + summary, your recording with the detected window
-  highlighted, reference calls (Wikimedia Commons; Xeno-canto with a key), seasonality at
-  your location, IUCN status (Wikidata), taxonomy, nearby records and range map (GBIF),
-  shareable PNG card.
-- **Settings** — threshold, clip length, repeat window, mic picker, location (device or a
-  searched place), location filter (weighted / hard filter), BirdNET sensitivity, window
-  step, regional names (21 languages), weather, desktop notifications, theme.
+## Pages
 
-All online extras are keyless (Wikipedia, Wikidata, Commons, GBIF, Open-Meteo,
-BigDataCloud) except optional Xeno-canto.
+- **Listen** — live identification from the mic, with a spectrogram and level meter. `Space` starts and stops.
+- **Identify a file** — drag in recordings and see when each bird calls.
+- **Birds near you** — what to expect at your location this week, with rarity, season, group and conservation filters, plus the hunt list, Bird of the day, points and levels.
+- **Bird log** — everything you've found, with clips, stats and CSV/JSON export.
+- **Settings** — sensitivity, clip length, microphone, location, filter style, language and theme.
 
-`npm run build` produces a static site in `dist/` you can host anywhere.
+## Project layout
+
+```
+src/
+  App.jsx            app shell, listening session, bird log
+  pages/             one file per page
+  components/        species panel, clip player, shared UI
+  lib/engine.js      talks to the model worker, labels, local names
+  lib/worker.js      runs BirdNET with LiteRT.js off the main thread
+  lib/audio.js       microphone capture, file decoding, WAV export
+  lib/apis.js        Wikipedia, Wikidata, GBIF, Open-Meteo
+  lib/explore.js     rarity tiers, seasons, groups, points
+desktop/             launcher for the packaged Windows build
+scripts/setup.mjs    downloads and prepares the models
+```
+
+`node scripts/check-explore.mjs` runs a quick check of the rarity and season logic.
 
 ## Notes
 
-- `scripts/setup.mjs` pins the meta model's dynamic batch dim (`-1`) to `1`, since LiteRT.js
-  can't run dynamic shapes.
-- The V2 meta model takes the **raw week number (1–48)**. The `cos(week·7.5°)+1` encoding is
-  for the older V1 meta model; feeding it to V2 suppresses seasonal species.
+- LiteRT.js can't run models with a dynamic batch size, so `setup.mjs` fixes the location
+  model's batch dimension to 1.
+- The location model (V2) takes the plain week number, 1 to 48.
